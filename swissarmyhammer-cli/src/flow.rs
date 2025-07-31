@@ -125,14 +125,14 @@ struct WorkflowCommandConfig {
 /// Execute a workflow
 async fn run_workflow_command(config: WorkflowCommandConfig) -> Result<()> {
     let mut storage = WorkflowStorage::file_system()?;
-    
+
     // If run_on_completion is set and workflow is "implement", use "implement_and_run" instead
     let workflow_name = if config.run_on_completion && config.workflow_name == "implement" {
         "implement_and_run".to_string()
     } else {
         config.workflow_name.clone()
     };
-    
+
     let workflow_name_typed = WorkflowName::new(&workflow_name);
 
     // Get the workflow
