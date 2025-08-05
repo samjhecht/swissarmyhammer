@@ -1,5 +1,6 @@
+use crate::ui::UiContext;
 use anyhow::{anyhow, Result};
-use colored::*;
+use colored::Colorize;
 use dialoguer::{theme::ColorfulTheme, Input};
 use std::collections::HashMap;
 use std::fs;
@@ -24,12 +25,14 @@ pub struct TestConfig {
 
 pub struct TestRunner {
     library: PromptLibrary,
+    ui: UiContext,
 }
 
 impl TestRunner {
     pub fn new() -> Self {
         Self {
             library: PromptLibrary::new(),
+            ui: UiContext::default(),
         }
     }
 
@@ -128,15 +131,20 @@ impl TestRunner {
         let theme = ColorfulTheme::default();
 
         if prompt.arguments.is_empty() {
-            println!("{}", "ℹ No arguments required for this prompt".blue());
+            println!(
+                "{}",
+                self.ui.info("ℹ No arguments required for this prompt")
+            );
             return Ok(args);
         }
 
         println!(
             "{}",
-            "📝 Please provide values for the following arguments:"
-                .bold()
-                .blue()
+            self.ui.header(
+                self.ui
+                    .info("📝 Please provide values for the following arguments:")
+                    .to_string()
+            )
         );
         println!();
 
@@ -144,13 +152,13 @@ impl TestRunner {
             let prompt_text = if arg.required {
                 format!(
                     "{} (required): {}",
-                    arg.name.bold(),
+                    self.ui.header(&arg.name),
                     arg.description.as_deref().unwrap_or("")
                 )
             } else {
                 format!(
                     "{} (optional): {}",
-                    arg.name.bold(),
+                    self.ui.header(&arg.name),
                     arg.description.as_deref().unwrap_or("")
                 )
             };
@@ -165,7 +173,7 @@ impl TestRunner {
                 match input.interact_text() {
                     Ok(value) => {
                         if value.is_empty() && arg.required && arg.default.is_none() {
-                            println!("{}", "❌ This argument is required".red());
+                            println!("{}", self.ui.error("❌ This argument is required"));
                             continue;
                         }
 

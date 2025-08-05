@@ -116,9 +116,12 @@ async fn test_sub_workflow_action_empty_workflow_stack() {
 
     // It will fail with execution error (workflow not found), but not circular dependency
     assert!(result.is_err());
-    if let ActionError::ExecutionError(msg) = result.unwrap_err() {
-        assert!(!msg.contains("Circular dependency"));
-        assert!(msg.contains("Failed to load sub-workflow"));
+    match result.unwrap_err() {
+        ActionError::ExecutionError(msg) => {
+            assert!(!msg.contains("Circular dependency"));
+            assert!(msg.contains("Failed to load sub-workflow '"));
+        }
+        other => panic!("Expected ExecutionError, got: {:?}", other),
     }
 }
 

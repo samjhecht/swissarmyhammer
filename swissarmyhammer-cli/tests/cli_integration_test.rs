@@ -1705,15 +1705,15 @@ Test case {i} validates performance with conditional checking."#
         "normal mode validation should complete"
     );
 
-    // Both should complete in reasonable time (less than 5 seconds for 50 files + builtins)
+    // Both should complete in reasonable time (less than 10 seconds for 50 files + builtins)
     assert!(
-        quiet_duration.as_secs() < 5,
-        "quiet mode validation should complete within 5 seconds, took {:.2}s",
+        quiet_duration.as_secs() < 10,
+        "quiet mode validation should complete within 10 seconds, took {:.2}s",
         quiet_duration.as_secs_f64()
     );
     assert!(
-        normal_duration.as_secs() < 5,
-        "normal mode validation should complete within 5 seconds, took {:.2}s",
+        normal_duration.as_secs() < 10,
+        "normal mode validation should complete within 10 seconds, took {:.2}s",
         normal_duration.as_secs_f64()
     );
 

@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 #[tokio::test]
+#[ignore = "Requires Claude CLI to be installed"]
 async fn test_claude_builtin_retry_through_direct_execution() {
     // Test that actions are executed directly without wrapper retry logic
     let action = PromptAction::new("test prompt".to_string());
@@ -93,6 +94,7 @@ fn test_action_error_propagation_for_claude_retry() {
 }
 
 #[tokio::test]
+#[ignore = "Requires Claude CLI to be installed"]
 async fn test_no_action_level_retry_logic() {
     // Test that actions don't have their own retry logic
     let action = PromptAction::new("test".to_string());
@@ -138,6 +140,7 @@ fn test_claude_retry_integration_through_error_types() {
 }
 
 #[tokio::test]
+#[ignore = "Requires Claude CLI to be installed"]
 async fn test_workflow_executor_uses_direct_execution() {
     // Test that the workflow executor calls actions directly without retry wrappers
     use crate::workflow::definition::Workflow;

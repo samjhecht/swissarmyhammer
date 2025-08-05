@@ -1276,25 +1276,46 @@ stateDiagram-v2
 
     #[test]
     fn test_builtin_workflows_loaded() {
+        use tempfile::TempDir;
+
         // Test that builtin workflows are properly loaded
         let mut resolver = WorkflowResolver::new();
         let mut storage = MemoryWorkflowStorage::new();
 
-        // Load all workflows including builtins
-        match resolver.load_all_workflows(&mut storage) {
+        // Create a temp directory and change to it to avoid loading from local directories
+        let temp_dir = TempDir::new().unwrap();
+        let original_dir = std::env::current_dir().ok();
+        if let Some(ref _dir) = original_dir {
+            std::env::set_current_dir(temp_dir.path()).unwrap();
+        }
+
+        // Load only builtin workflows
+        match resolver.load_builtin_workflows() {
             Ok(_) => {
                 // Successfully loaded workflows
             }
             Err(e) => {
-                // If loading fails due to filesystem issues in CI, check if it's acceptable
-                if e.to_string().contains("No such file or directory") {
-                    // This is OK in CI - builtin workflows are embedded in the binary
-                    // and don't require filesystem access
-                    println!("Warning: Could not load workflows from filesystem in CI: {e}");
-                    return;
+                // Restore directory before panicking
+                if let Some(dir) = original_dir {
+                    let _ = std::env::set_current_dir(dir);
                 }
-                panic!("Unexpected error loading workflows: {e}");
+                panic!("Failed to load builtin workflows: {e}");
             }
+        }
+
+        // Process loaded workflows
+        for file in resolver.vfs.list() {
+            if let Ok(workflow) = MermaidParser::parse(&file.content, &*file.name) {
+                storage.store_workflow(workflow).unwrap();
+                resolver
+                    .workflow_sources
+                    .insert(WorkflowName::new(&file.name), file.source.clone());
+            }
+        }
+
+        // Restore original directory
+        if let Some(dir) = original_dir {
+            let _ = std::env::set_current_dir(dir);
         }
 
         // Get all workflows
@@ -1306,17 +1327,23 @@ stateDiagram-v2
             "No workflows were loaded, expected at least hello-world builtin"
         );
 
-        // Find hello-world workflow
-        let hello_world = workflows.iter().find(|w| w.name.as_str() == "hello-world");
+        // Find hello-world workflow (the name includes .md extension from the VFS)
+        let hello_world = workflows
+            .iter()
+            .find(|w| w.name.as_str() == "hello-world.md");
         assert!(
             hello_world.is_some(),
-            "hello-world builtin workflow not found"
+            "hello-world builtin workflow not found. Available: {:?}",
+            workflows
+                .iter()
+                .map(|w| w.name.as_str())
+                .collect::<Vec<_>>()
         );
 
         // Verify it's marked as builtin
         let source = resolver
             .workflow_sources
-            .get(&WorkflowName::new("hello-world"));
+            .get(&WorkflowName::new("hello-world.md"));
         assert_eq!(source, Some(&FileSource::Builtin));
     }
 

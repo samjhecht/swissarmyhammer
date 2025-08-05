@@ -124,9 +124,9 @@ fn test_complete_issue_lifecycle() -> Result<()> {
         "Issue should appear in list: {list_stdout}"
     );
 
-    // Step 3: Show the issue details
+    // Step 3: Show the issue details - use the name from creation
     let show_output = Command::cargo_bin("swissarmyhammer")?
-        .args(["issue", "show", "000001_e2e_lifecycle_test"])
+        .args(["issue", "show", "e2e_lifecycle_test"])
         .current_dir(&temp_path)
         .assert()
         .success();
@@ -142,7 +142,7 @@ fn test_complete_issue_lifecycle() -> Result<()> {
         .args([
             "issue",
             "update",
-            "000001_e2e_lifecycle_test",
+            "e2e_lifecycle_test",
             "--content",
             "Updated content for e2e testing",
             "--append",
@@ -153,7 +153,7 @@ fn test_complete_issue_lifecycle() -> Result<()> {
 
     // Step 5: Verify the update
     let updated_show_output = Command::cargo_bin("swissarmyhammer")?
-        .args(["issue", "show", "000001_e2e_lifecycle_test"])
+        .args(["issue", "show", "e2e_lifecycle_test"])
         .current_dir(&temp_path)
         .assert()
         .success();
@@ -166,7 +166,7 @@ fn test_complete_issue_lifecycle() -> Result<()> {
 
     // Step 6: Work on the issue (creates git branch)
     Command::cargo_bin("swissarmyhammer")?
-        .args(["issue", "work", "000001_e2e_lifecycle_test"])
+        .args(["issue", "work", "e2e_lifecycle_test"])
         .current_dir(&temp_path)
         .assert()
         .success();
@@ -186,14 +186,14 @@ fn test_complete_issue_lifecycle() -> Result<()> {
 
     // Step 8: Complete the issue
     Command::cargo_bin("swissarmyhammer")?
-        .args(["issue", "complete", "000001_e2e_lifecycle_test"])
+        .args(["issue", "complete", "e2e_lifecycle_test"])
         .current_dir(&temp_path)
         .assert()
         .success();
 
     // Step 9: Merge the issue
     Command::cargo_bin("swissarmyhammer")?
-        .args(["issue", "merge", "000001_e2e_lifecycle_test"])
+        .args(["issue", "merge", "e2e_lifecycle_test"])
         .current_dir(&temp_path)
         .assert()
         .success();
@@ -356,6 +356,7 @@ fn test_complete_memo_workflow() -> Result<()> {
 
 /// Test complete search workflow
 #[test]
+#[serial_test::serial]
 fn test_complete_search_workflow() -> Result<()> {
     let (_temp_dir, temp_path) = setup_e2e_test_environment()?;
 
@@ -363,7 +364,7 @@ fn test_complete_search_workflow() -> Result<()> {
     let index_output = Command::cargo_bin("swissarmyhammer")?
         .args(["search", "index", "src/**/*.rs"])
         .current_dir(&temp_path)
-        .timeout(Duration::from_secs(60)) // Allow time for model download
+        .timeout(Duration::from_secs(120)) // Allow time for model download
         .assert()
         .success();
 
@@ -379,6 +380,7 @@ fn test_complete_search_workflow() -> Result<()> {
     let query_output = Command::cargo_bin("swissarmyhammer")?
         .args(["search", "query", "function", "--limit", "10"])
         .current_dir(&temp_path)
+        .timeout(Duration::from_secs(120)) // Allow time for model operations
         .assert()
         .success();
 
@@ -393,6 +395,7 @@ fn test_complete_search_workflow() -> Result<()> {
     let specific_query_output = Command::cargo_bin("swissarmyhammer")?
         .args(["search", "query", "error handling", "--format", "json"])
         .current_dir(&temp_path)
+        .timeout(Duration::from_secs(120)) // Allow time for model operations
         .assert()
         .success();
 
@@ -414,7 +417,7 @@ fn test_complete_search_workflow() -> Result<()> {
     Command::cargo_bin("swissarmyhammer")?
         .args(["search", "index", "src/**/*.rs", "--force"])
         .current_dir(&temp_path)
-        .timeout(Duration::from_secs(30))
+        .timeout(Duration::from_secs(120)) // Allow time for model operations
         .assert()
         .success();
 
@@ -424,6 +427,7 @@ fn test_complete_search_workflow() -> Result<()> {
         Command::cargo_bin("swissarmyhammer")?
             .args(["search", "query", "integration", "--format", format])
             .current_dir(&temp_path)
+            .timeout(Duration::from_secs(120)) // Allow time for model operations
             .assert()
             .success();
     }
@@ -433,6 +437,7 @@ fn test_complete_search_workflow() -> Result<()> {
 
 /// Test mixed workflow with issues, memos, and search
 #[test]
+#[serial_test::serial]
 fn test_mixed_workflow() -> Result<()> {
     let (_temp_dir, temp_path) = setup_e2e_test_environment()?;
 
@@ -467,7 +472,7 @@ fn test_mixed_workflow() -> Result<()> {
 
     // Step 3: Work on the issue
     Command::cargo_bin("swissarmyhammer")?
-        .args(["issue", "work", "000001_implement_search_feature"])
+        .args(["issue", "work", "implement_search_feature"])
         .current_dir(&temp_path)
         .assert()
         .success();
@@ -476,7 +481,7 @@ fn test_mixed_workflow() -> Result<()> {
     Command::cargo_bin("swissarmyhammer")?
         .args(["search", "index", "src/**/*.rs"])
         .current_dir(&temp_path)
-        .timeout(Duration::from_secs(60))
+        .timeout(Duration::from_secs(120)) // Allow time for model download
         .assert()
         .success();
 
@@ -498,7 +503,7 @@ fn test_mixed_workflow() -> Result<()> {
         .args([
             "issue",
             "update",
-            "000001_implement_search_feature",
+            "implement_search_feature",
             "--content",
             "\n\n## Progress Update\n\nSearch indexing is now working correctly. Ready for testing phase.",
             "--append"
@@ -511,6 +516,7 @@ fn test_mixed_workflow() -> Result<()> {
     Command::cargo_bin("swissarmyhammer")?
         .args(["search", "query", "integration test"])
         .current_dir(&temp_path)
+        .timeout(Duration::from_secs(120)) // Allow time for model operations
         .assert()
         .success();
 
@@ -529,7 +535,7 @@ fn test_mixed_workflow() -> Result<()> {
 
     // Step 9: Complete the issue
     Command::cargo_bin("swissarmyhammer")?
-        .args(["issue", "complete", "000001_implement_search_feature"])
+        .args(["issue", "complete", "implement_search_feature"])
         .current_dir(&temp_path)
         .assert()
         .success();
@@ -563,7 +569,7 @@ fn test_mixed_workflow() -> Result<()> {
 
     // Step 12: Merge the completed issue
     Command::cargo_bin("swissarmyhammer")?
-        .args(["issue", "merge", "000001_implement_search_feature"])
+        .args(["issue", "merge", "implement_search_feature"])
         .current_dir(&temp_path)
         .assert()
         .success();
@@ -573,6 +579,7 @@ fn test_mixed_workflow() -> Result<()> {
 
 /// Test error recovery workflow
 #[test]
+#[serial_test::serial]
 fn test_error_recovery_workflow() -> Result<()> {
     let (_temp_dir, temp_path) = setup_e2e_test_environment()?;
 
@@ -598,7 +605,7 @@ fn test_error_recovery_workflow() -> Result<()> {
 
     // Step 3: Now work on the issue (should succeed)
     Command::cargo_bin("swissarmyhammer")?
-        .args(["issue", "work", "000001_error_recovery_test"])
+        .args(["issue", "work", "error_recovery_test"])
         .current_dir(&temp_path)
         .assert()
         .success();
@@ -637,6 +644,7 @@ fn test_error_recovery_workflow() -> Result<()> {
     Command::cargo_bin("swissarmyhammer")?
         .args(["search", "query", "recovery"])
         .current_dir(&temp_path)
+        .timeout(Duration::from_secs(120)) // Allow time for model operations
         .assert()
         .success(); // Should handle gracefully even if no index
 
@@ -644,13 +652,14 @@ fn test_error_recovery_workflow() -> Result<()> {
     Command::cargo_bin("swissarmyhammer")?
         .args(["search", "index", "src/**/*.rs"])
         .current_dir(&temp_path)
-        .timeout(Duration::from_secs(60))
+        .timeout(Duration::from_secs(120)) // Allow time for model download
         .assert()
         .success();
 
     Command::cargo_bin("swissarmyhammer")?
         .args(["search", "query", "integration"])
         .current_dir(&temp_path)
+        .timeout(Duration::from_secs(120)) // Allow time for model operations
         .assert()
         .success();
 
@@ -659,6 +668,7 @@ fn test_error_recovery_workflow() -> Result<()> {
 
 /// Test performance under realistic workflow load
 #[test]
+#[serial_test::serial]
 fn test_realistic_load_workflow() -> Result<()> {
     let (_temp_dir, temp_path) = setup_e2e_test_environment()?;
 
@@ -707,15 +717,15 @@ fn test_realistic_load_workflow() -> Result<()> {
     Command::cargo_bin("swissarmyhammer")?
         .args(["search", "index", "src/**/*.rs"])
         .current_dir(&temp_path)
-        .timeout(Duration::from_secs(60))
+        .timeout(Duration::from_secs(120)) // Allow time for model download
         .assert()
         .success();
 
     let elapsed = start_time.elapsed();
 
-    // Should complete in reasonable time (less than 60 seconds for this load)
+    // Should complete in reasonable time (less than 180 seconds for this load, including model download)
     assert!(
-        elapsed < Duration::from_secs(60),
+        elapsed < Duration::from_secs(180),
         "Workflow should complete in reasonable time: {elapsed:?}"
     );
 

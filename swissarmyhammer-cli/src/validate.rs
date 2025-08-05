@@ -1,5 +1,5 @@
+use crate::ui::{Icon, UiContext};
 use anyhow::{Context, Result};
-use colored::*;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 use swissarmyhammer::validation::{
@@ -34,6 +34,7 @@ pub struct Validator {
     quiet: bool,
     #[allow(dead_code)] // TODO: Use config to control validation behavior
     config: ValidationConfig,
+    ui: UiContext,
 }
 
 impl Validator {
@@ -41,6 +42,7 @@ impl Validator {
         Self {
             quiet,
             config: ValidationConfig::default(),
+            ui: UiContext::default(),
         }
     }
 
@@ -309,7 +311,7 @@ impl Validator {
             if !self.quiet {
                 println!(
                     "{} All {} files validated successfully!",
-                    "✓".green(),
+                    self.ui.icon(Icon::Success),
                     result.files_checked
                 );
             }
@@ -337,24 +339,24 @@ impl Validator {
 
                 if let Some(title) = content_title {
                     // Show the prompt title
-                    println!("\n{}", title.bold());
+                    println!("\n{}", self.ui.header(title));
                     // Show the file path in smaller text if it's a user prompt
                     if file_path.to_string_lossy() != ""
                         && !file_path.to_string_lossy().contains("PathBuf")
                     {
-                        println!("  {}", file_path.display().to_string().dimmed());
+                        println!("  {}", self.ui.muted(file_path.display().to_string()));
                     }
                 } else {
                     // Fallback to file path if no title
-                    println!("\n{}", file_path.display().to_string().bold());
+                    println!("\n{}", self.ui.header(file_path.display().to_string()));
                 }
             }
 
             for issue in issues {
                 let level_str = match issue.level {
-                    ValidationLevel::Error => "ERROR".red(),
-                    ValidationLevel::Warning => "WARN".yellow(),
-                    ValidationLevel::Info => "INFO".blue(),
+                    ValidationLevel::Error => self.ui.error("ERROR"),
+                    ValidationLevel::Warning => self.ui.warning("WARN"),
+                    ValidationLevel::Info => self.ui.info("INFO"),
                 };
 
                 let location = if let (Some(line), Some(col)) = (issue.line, issue.column) {
@@ -373,36 +375,55 @@ impl Validator {
 
                 if !self.quiet {
                     if let Some(suggestion) = &issue.suggestion {
-                        println!("    💡 {}", suggestion.dimmed());
+                        println!("    💡 {}", self.ui.muted(suggestion));
                     }
                 }
             }
         }
 
         if !self.quiet {
-            println!("\n{}", "Summary:".bold());
+            println!("\n{}", self.ui.header("Summary:"));
             println!("  Files checked: {}", result.files_checked);
             if result.errors > 0 {
-                println!("  Errors: {}", result.errors.to_string().red());
+                println!("  Errors: {}", self.ui.error(result.errors.to_string()));
             }
             if result.warnings > 0 {
-                println!("  Warnings: {}", result.warnings.to_string().yellow());
+                println!(
+                    "  Warnings: {}",
+                    self.ui.warning(result.warnings.to_string())
+                );
             }
 
             if result.has_errors() {
-                println!("\n{} Validation failed with errors.", "✗".red());
+                println!(
+                    "\n{} {}",
+                    self.ui.icon(Icon::Error),
+                    self.ui.error("Validation failed with errors.")
+                );
             } else if result.has_warnings() {
-                println!("\n{} Validation completed with warnings.", "⚠".yellow());
+                println!(
+                    "\n{} {}",
+                    self.ui.icon(Icon::Warning),
+                    self.ui.warning("Validation completed with warnings.")
+                );
             } else {
-                println!("\n{} Validation passed!", "✓".green());
+                println!(
+                    "\n{} {}",
+                    self.ui.icon(Icon::Success),
+                    self.ui.success("Validation passed!")
+                );
             }
         } else {
             // In quiet mode, only show summary for errors
             if result.has_errors() {
-                println!("\n{}", "Summary:".bold());
+                println!("\n{}", self.ui.header("Summary:"));
                 println!("  Files checked: {}", result.files_checked);
-                println!("  Errors: {}", result.errors.to_string().red());
-                println!("\n{} Validation failed with errors.", "✗".red());
+                println!("  Errors: {}", self.ui.error(result.errors.to_string()));
+                println!(
+                    "\n{} {}",
+                    self.ui.icon(Icon::Error),
+                    self.ui.error("Validation failed with errors.")
+                );
             }
         }
     }

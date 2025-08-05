@@ -144,7 +144,7 @@ fn get_content_input(content: Option<String>) -> Result<String, Box<dyn std::err
 
 /// Custom response formatters for memo CLI commands to match expected test format
 mod memo_response_formatting {
-    use colored::*;
+    use crate::ui::UiContext;
     use once_cell::sync::Lazy;
     use regex::Regex;
     use rmcp::model::{CallToolResult, RawContent};
@@ -154,10 +154,13 @@ mod memo_response_formatting {
 
     /// Format memo create response to match CLI expectations
     pub fn format_create_memo_response(result: &CallToolResult, title: &str) -> String {
+        let ui = UiContext::default();
         if result.is_error.unwrap_or(false) {
-            return extract_text_content(result)
-                .unwrap_or_else(|| "An error occurred creating memo".to_string())
-                .red()
+            return ui
+                .error(
+                    extract_text_content(result)
+                        .unwrap_or_else(|| "An error occurred creating memo".to_string()),
+                )
                 .to_string();
         }
 
@@ -168,9 +171,9 @@ mod memo_response_formatting {
         let memo_id = extract_memo_id(&response_text);
 
         // Format in the expected CLI style
-        let mut output = format!("{} Created memo: {}", "✅".green(), title.bold());
+        let mut output = format!("{} Created memo: {}", ui.success("✅"), ui.header(title));
         if let Some(id) = memo_id {
-            output.push_str(&format!("\n🆔 ID: {}", id.blue()));
+            output.push_str(&format!("\n🆔 ID: {}", ui.info(id)));
 
             // Use current time since ULID parsing is complex
             let timestamp = chrono::Utc::now();
@@ -184,10 +187,13 @@ mod memo_response_formatting {
 
     /// Format memo search response to match CLI expectations  
     pub fn format_search_memo_response(result: &CallToolResult, query: &str) -> String {
+        let ui = UiContext::default();
         if result.is_error.unwrap_or(false) {
-            return extract_text_content(result)
-                .unwrap_or_else(|| "An error occurred searching memos".to_string())
-                .red()
+            return ui
+                .error(
+                    extract_text_content(result)
+                        .unwrap_or_else(|| "An error occurred searching memos".to_string()),
+                )
                 .to_string();
         }
 
@@ -197,26 +203,29 @@ mod memo_response_formatting {
         // Extract the count from responses like "Found 2 memos matching 'query'"
         if let Some(count) = extract_search_count(&response_text) {
             if count == 0 {
-                format!("{} No memos found matching '{}'", "🔍".blue(), query)
+                format!("{} No memos found matching '{}'", ui.info("🔍"), query)
             } else {
                 // Replace the start of the response with emoji version
                 response_text.replace(
                     &format!("Found {count} memo"),
-                    &format!("{} Found {count} memo", "🔍".blue()),
+                    &format!("{} Found {count} memo", ui.info("🔍")),
                 )
             }
         } else {
             // If we can't parse the count, just add the emoji
-            format!("{} {}", "🔍".blue(), response_text)
+            format!("{} {}", ui.info("🔍"), response_text)
         }
     }
 
     /// Format memo context response to match CLI expectations
     pub fn format_context_memo_response(result: &CallToolResult) -> String {
+        let ui = UiContext::default();
         if result.is_error.unwrap_or(false) {
-            return extract_text_content(result)
-                .unwrap_or_else(|| "An error occurred getting context".to_string())
-                .red()
+            return ui
+                .error(
+                    extract_text_content(result)
+                        .unwrap_or_else(|| "An error occurred getting context".to_string()),
+                )
                 .to_string();
         }
 
@@ -225,7 +234,7 @@ mod memo_response_formatting {
 
         // Handle empty context case
         if response_text.contains("No memos available") {
-            format!("{} No memos available for context", "ℹ️".blue())
+            format!("{} No memos available for context", ui.info("ℹ️"))
         } else {
             response_text
         }

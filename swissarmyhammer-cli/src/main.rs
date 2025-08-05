@@ -15,6 +15,7 @@ mod prompt;
 mod search;
 mod signal_handler;
 mod test;
+mod ui;
 mod validate;
 
 use clap::CommandFactory;

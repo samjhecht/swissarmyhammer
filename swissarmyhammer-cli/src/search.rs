@@ -1,5 +1,5 @@
+use crate::ui::UiContext;
 use anyhow::Result;
-use colored::*;
 use is_terminal::IsTerminal;
 use std::io;
 use tabled::{
@@ -249,7 +249,8 @@ pub fn generate_excerpt(content: &str, query: &str, highlight: bool) -> Option<S
         let excerpt = &content[start..end];
 
         if highlight {
-            let highlighted = excerpt.replace(query, &format!("{}", query.bright_yellow()));
+            let ui = UiContext::default();
+            let highlighted = excerpt.replace(query, &ui.warning(query).to_string());
             Some(format!("...{highlighted}..."))
         } else {
             Some(format!("...{excerpt}..."))
@@ -272,13 +273,14 @@ pub fn generate_excerpt_with_long_text(content: &str, query: &str, max_length: u
 /// Run semantic search commands
 pub async fn run_search(subcommand: SearchCommands) -> i32 {
     use crate::exit_codes::{EXIT_ERROR, EXIT_SUCCESS};
+    let ui = UiContext::default();
 
     match subcommand {
         SearchCommands::Index { patterns, force } => {
             match run_semantic_index(&patterns, force).await {
                 Ok(()) => EXIT_SUCCESS,
                 Err(e) => {
-                    eprintln!("{}", format!("❌ Indexing failed: {e}").red());
+                    eprintln!("{}", ui.error(format!("❌ Indexing failed: {e}")));
                     EXIT_ERROR
                 }
             }
@@ -290,7 +292,7 @@ pub async fn run_search(subcommand: SearchCommands) -> i32 {
         } => match run_semantic_query_with_format(&query, limit, format).await {
             Ok(()) => EXIT_SUCCESS,
             Err(e) => {
-                eprintln!("{}", format!("❌ Search failed: {e}").red());
+                eprintln!("{}", ui.error(format!("❌ Search failed: {e}")));
                 EXIT_ERROR
             }
         },
@@ -299,7 +301,8 @@ pub async fn run_search(subcommand: SearchCommands) -> i32 {
 
 /// Run semantic indexing for the given patterns using MCP tools
 async fn run_semantic_index(patterns: &[String], force: bool) -> Result<()> {
-    println!("{}", "🔍 Starting semantic search indexing...".cyan());
+    let ui = UiContext::default();
+    println!("{}", ui.info("🔍 Starting semantic search indexing..."));
 
     if patterns.is_empty() {
         return Err(anyhow::anyhow!(
@@ -309,15 +312,15 @@ async fn run_semantic_index(patterns: &[String], force: bool) -> Result<()> {
 
     // For backward compatibility with tests, show different message based on pattern count
     if patterns.len() == 1 {
-        println!("Indexing files matching: {}", patterns[0].bright_yellow());
+        println!("Indexing files matching: {}", ui.warning(&patterns[0]));
     } else {
         println!(
             "Indexing patterns/files: {}",
-            patterns.join(", ").bright_yellow()
+            ui.warning(patterns.join(", "))
         );
     }
     if force {
-        println!("{}", "Force re-indexing: enabled".yellow());
+        println!("{}", ui.warning("Force re-indexing: enabled"));
     }
 
     // Use MCP tool for indexing
@@ -521,6 +524,7 @@ mod search_response_formatting {
     pub fn format_index_response(
         result: &CallToolResult,
     ) -> Result<(), Box<dyn std::error::Error>> {
+        let ui = UiContext::default();
         let json_data = response_formatting::extract_json_data(result)?;
 
         let indexed_files = json_data
@@ -541,7 +545,10 @@ mod search_response_formatting {
             .unwrap_or(0);
 
         // Match the exact formatting from the original implementation
-        println!("\n{}", "✅ Indexing completed!".green().bold());
+        println!(
+            "\n{}",
+            ui.header(ui.success("✅ Indexing completed!").to_string())
+        );
         println!("Duration: {:.2}s", (execution_time as f32) / 1000.0);
 
         // Create summary matching original format
@@ -557,7 +564,7 @@ mod search_response_formatting {
         }
 
         if !summary_parts.is_empty() {
-            println!("{}", summary_parts.join(", ").bright_cyan());
+            println!("{}", ui.info(summary_parts.join(", ")));
         }
 
         Ok(())
@@ -568,6 +575,7 @@ mod search_response_formatting {
         result: &CallToolResult,
         format: OutputFormat,
     ) -> Result<(), Box<dyn std::error::Error>> {
+        let ui = UiContext::default();
         let json_data = response_formatting::extract_json_data(result)?;
 
         match format {
@@ -578,7 +586,7 @@ mod search_response_formatting {
                 println!("{}", serde_yaml::to_string(&json_data)?);
             }
             OutputFormat::Table => {
-                format_query_results_table(&json_data)?;
+                format_query_results_table(&json_data, &ui)?;
             }
         }
 
@@ -588,6 +596,7 @@ mod search_response_formatting {
     /// Format query results as table matching original CLI behavior
     fn format_query_results_table(
         data: &serde_json::Value,
+        ui: &UiContext,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let empty_vec = vec![];
         let results = data
@@ -601,17 +610,18 @@ mod search_response_formatting {
             .unwrap_or(0);
 
         // Match original formatting exactly
-        println!("{}", "🔍 Starting semantic search query...".cyan());
-        println!("Searching for: {}", query.bright_yellow());
+        println!("{}", ui.info("🔍 Starting semantic search query..."));
+        println!("Searching for: {}", ui.warning(query));
 
         if results.is_empty() {
-            println!("\n{}", "No matches found.".yellow());
+            println!("\n{}", ui.warning("No matches found."));
         } else {
             println!(
                 "\n{}",
-                format!("✅ Found {} results!", results.len())
-                    .green()
-                    .bold()
+                ui.header(
+                    ui.success(format!("✅ Found {} results!", results.len()))
+                        .to_string()
+                )
             );
             println!("Search duration: {:.2}s", (execution_time as f32) / 1000.0);
             println!();
@@ -632,32 +642,30 @@ mod search_response_formatting {
                         .unwrap_or(0);
 
                     // Match original color coding logic
-                    let score_color = if similarity > 0.8 {
-                        "green"
+                    let result_line = format!(
+                        "{}. {}:{} (score: {:.3})",
+                        i + 1,
+                        file_path,
+                        line_start,
+                        similarity
+                    );
+
+                    let styled_result = if similarity > 0.8 {
+                        ui.success(&result_line)
                     } else if similarity > 0.6 {
-                        "yellow"
+                        ui.warning(&result_line)
                     } else {
-                        "white"
+                        ui.muted(&result_line)
                     };
 
-                    println!(
-                        "{}",
-                        format!(
-                            "{}. {}:{} (score: {:.3})",
-                            i + 1,
-                            file_path,
-                            line_start,
-                            similarity
-                        )
-                        .color(score_color)
-                    );
+                    println!("{styled_result}");
 
                     // Show excerpt matching original format
                     if let Some(excerpt) = result_obj.get("excerpt").and_then(|v| v.as_str()) {
                         let excerpt = excerpt.trim();
                         if !excerpt.is_empty() {
                             for line in excerpt.lines() {
-                                println!("   {}", line.dimmed());
+                                println!("   {}", ui.muted(line));
                             }
                         }
                     }

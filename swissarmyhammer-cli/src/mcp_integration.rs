@@ -133,27 +133,30 @@ impl CliToolContext {
 
 /// Utilities for formatting MCP responses for CLI display
 pub mod response_formatting {
-    use colored::*;
+    use crate::ui::UiContext;
     use rmcp::model::{CallToolResult, RawContent};
 
     /// Extract and format success message from MCP response
     pub fn format_success_response(result: &CallToolResult) -> String {
+        let ui = UiContext::default();
         if result.is_error.unwrap_or(false) {
             format_error_response(result)
         } else {
-            extract_text_content(result)
-                .unwrap_or_else(|| "Operation completed successfully".to_string())
-                .green()
-                .to_string()
+            ui.success(
+                extract_text_content(result)
+                    .unwrap_or_else(|| "Operation completed successfully".to_string()),
+            )
+            .to_string()
         }
     }
 
     /// Extract and format error message from MCP response
     pub fn format_error_response(result: &CallToolResult) -> String {
-        extract_text_content(result)
-            .unwrap_or_else(|| "An unknown error occurred".to_string())
-            .red()
-            .to_string()
+        let ui = UiContext::default();
+        ui.error(
+            extract_text_content(result).unwrap_or_else(|| "An unknown error occurred".to_string()),
+        )
+        .to_string()
     }
 
     /// Extract text content from CallToolResult
